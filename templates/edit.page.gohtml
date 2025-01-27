@@ -1,0 +1,76 @@
+{{template "base" .}}
+
+{{define "content" }}
+
+    <div class="container mt-5">
+        <h3>Update Partition for Topic <span id="topic"></span> and Cluster ID <span id="cluster"></span></h3>
+        <p id="error" class="mt-5 mb-2"></p>
+        <form id="updateForm" class="mt-2">
+            <div class="form-group">
+                <label for="partitionInput">Partition Number</label>
+                <input type="number" class="form-control" id="partitionInput" placeholder="Enter partition number">
+            </div>
+            <button type="submit" class="btn btn-primary mt-2">Update</button>
+        </form>
+    </div>
+
+{{end}}
+
+{{define "js"}}
+    <script>
+        // onload 
+        function onload() {
+            const params = new URLSearchParams(window.location.search);
+            let cluster = params.get('cluster_id');
+            let topic = params.get('topic_name');
+            let pc = params.get('pc');
+            
+            document.getElementById("cluster").innerHTML = cluster;
+            document.getElementById("topic").innerHTML = topic;
+            document.getElementById("partitionInput").value = parseInt(pc,10);
+
+        }
+         window.onload = onload();
+
+        document.getElementById("updateForm").addEventListener("submit", function(event) {
+            event.preventDefault(); // Prevent form from submitting normally
+
+            const params = new URLSearchParams(window.location.search);
+            let cluster_id = params.get('cluster_id');
+            let topic_name = params.get('topic_name');
+
+            if (!cluster_id || !topic_name){
+                alert('Error cluster_id or Topic.');
+                return;
+            }
+
+            // Get the partition_id from the input field
+            const partitionId = document.getElementById("partitionInput").value;
+
+            // Construct the PATCH request
+            fetch(`http://localhost:8082/v3/clusters/${cluster_id}/topics/${topic_name}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ partitions_count: parseInt(partitionId,10) })
+            })
+            .then(response => response.json())
+            .then(response => {
+                console.log(response);
+                if (response) {
+                    alert('Partition updated successfully.');
+                    window.location.href = '/';
+                } else {
+                    document.getElementById("error").innerHTML = response.message;
+                    console.log('Error updating partition.', response.message);
+                    alert('Error updating partition.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating partition.');
+            });
+        });
+    </script>
+{{end}}

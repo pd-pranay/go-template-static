@@ -1,0 +1,97 @@
+{{template "base" .}}
+
+{{define "content" }}
+
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between">
+            <div>
+                <h1 class="">Topic List</h1>
+            </div>
+            <div>
+                <a href="http://localhost:4200/add" class="btn btn-primary">Add Topic</a>
+            </div>
+        </div>
+        <table class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Topic Name</th>
+                    <th>Partitions</th>
+                    <th>Replications</th>
+                    <th>Cluster ID</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="topics">
+
+            </tbody>
+        </table>
+    </div>
+
+{{end}}
+
+{{define "js"}}
+    <script>
+
+        function getTopics() {
+            
+            fetch('http://localhost:8082/v3/clusters')
+                .then(response => response.json())
+                .then(({ data }) => fetch(`http://localhost:8082/v3/clusters/${data[0].cluster_id}/topics`))
+                .then(response => response.json())
+                .then(({ data }) => {
+                  let filtered = data
+                    .filter(({ topic_name }) => !topic_name.startsWith('_')); // Skip internal topics
+                    console.log(filtered)
+                    const tableBody = document.getElementById("topics");
+
+                    // Clear existing rows
+                    tableBody.innerHTML = "";
+
+                    // Generate rows based on item data
+                        filtered.forEach((item, index) => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td><a href="#">${item.topic_name}</a></td>
+                            <td>${item.partitions_count}</td>
+                            <td>${item.replication_factor}</td>
+                            <td>${item.cluster_id}</td>
+                            <td>
+                            <a href="http://localhost:4200/edit?topic_name=${item.topic_name}&cluster_id=${item.cluster_id}&pc=${item.partitions_count}" class="btn btn-primary">Edit</a>
+                            <button onclick="deleteTopic(event, '${item.cluster_id}', '${item.topic_name}')" class="btn btn-danger">Delete </button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                })
+                .catch(error => console.warn(error));
+        }
+        getTopics();
+        
+        function deleteTopic(event, cluster_id, topic_name) {
+
+            event.preventDefault(event);
+            if (confirm("Are you Sure ?") == true) {
+                fetch(`http://localhost:8082/v3/clusters/${cluster_id}/topics/${topic_name}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json', // Modify the content type if needed
+                    },
+                })
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Resource deleted successfully.', response);
+                        alert('Partition updated successfully.');
+                        window.location.href = '/';
+                    } else {
+                        console.error('Failed to delete resource.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        }
+    </script>
+{{end}}
